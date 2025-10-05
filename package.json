@@ -2,10 +2,9 @@
     "name": "aq-hgis",
     "version": "1.0.0",
     "description": "Proyecto inicial para aq-hgis",
-    "main": "js/script.js",
+    "main": "index.html",
     "scripts": {
-        "predeploy": "npm run build",
-        "deploy": "gh-pages -d dist"
+        "deploy": "gh-pages -d ."
     },
     "keywords": [],
     "author": "",
