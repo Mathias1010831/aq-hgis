@@ -1,0 +1,16 @@
+{
+    "name": "aq-hgis",
+    "version": "1.0.0",
+    "description": "Proyecto inicial para aq-hgis",
+    "main": "index.html",
+    "scripts": {
+        "deploy": "gh-pages -d ."
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "gh-pages": "^6.3.0",
+        "vite": "^7.1.9"
+    }
+}

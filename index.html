@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geospatial Water Analysis in Arequipa</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; overflow: hidden; }
+        #map { width: 100vw; height: 100vh; background-color: #f0f4f8; }
+        /* Popup Styles */
+        .leaflet-popup-content-wrapper { background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .leaflet-popup-content { margin: 15px; font-size: 14px; line-height: 1.6; max-width: 300px !important; }
+        .leaflet-popup-content h3, .leaflet-popup-content h4 { font-weight: 700; color: #111827; margin: 0 0 10px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; }
+        .leaflet-popup-content h3 { font-size: 18px; }
+        .leaflet-popup-content h4 { font-size: 16px; margin-top: 10px; }
+        .leaflet-popup-content p { margin: 5px 0; color: #374151; }
+        .leaflet-popup-content p strong { color: #1f2937; }
+        .leaflet-popup-tip { background-color: #ffffff; }
+
+        /* Style: Large and Clear District Labels */
+        .district-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 700; 
+            color: #1a202c; 
+            background-color: rgba(255, 255, 255, 0.85); 
+            padding: 3px 6px;
+            border-radius: 4px;
+            border: 1px solid #9ca3af;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            white-space: nowrap; 
+            text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7);
+        }
+
+        /* Icon for Springs (Water Sources) */
+        .spring-icon {
+            background-color: #00ffff; /* Bright Blue Color */
+            border: 2px solid #0000ff;
+            color: #0000ff;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: 900;
+            width: 28px !important;
+            height: 28px !important;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+            transform: rotate(45deg); /* Diamond/Droplet visual effect */
+        }
+        
+        /* Style for Classification Legend (Bottom Right) */
+        .legend-control {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            line-height: 1.5;
+        }
+        .legend-control h4 { margin: 0 0 8px 0; font-weight: bold; text-align: center; font-size: 14px; color: #333; }
+        .legend-section { margin-bottom: 5px; }
+        .legend-section div { display: flex; align-items: center; margin-bottom: 4px; font-size: 12px; }
+        .legend-section span { width: 18px; height: 18px; margin-right: 8px; border: 1px solid #555; }
+        .marker-legend span { border-radius: 50%; }
+        .zone-legend span { opacity: 0.7; }
+        
+        /* Specific style for the spring icon in the legend */
+        .spring-legend-icon {
+            background-color: #00ffff !important; 
+            border: 2px solid #0000ff !important;
+            box-shadow: 0 0 5px rgba(0, 255, 255, 0.7);
+            transform: rotate(45deg);
+        }
+
+        /* Quality Parameters Legend (Bottom Left) */
+        .quality-control {
+            position: absolute;
+            bottom: 20px;
+            left: 20px; 
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            line-height: 1.5;
+            width: 220px; 
+        }
+        .quality-control h4 {
+            margin: 0 0 8px 0;
+            font-weight: bold;
+            text-align: center;
+            font-size: 14px;
+            color: #007bff;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 5px;
+        }
+        .quality-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 13px;
+            border-bottom: 1px dotted #e5e7eb;
+        }
+        .quality-item:last-child {
+            border-bottom: none;
+        }
+        .quality-item strong {
+            color: #1f2937;
+        }
+        .quality-item span {
+            color: #28a745;
+            font-weight: 600;
+        }
+        .quality-item.critical span {
+            color: #dc3545;
+        }
+
+        /* Style for layer controls (for better visibility) */
+        .leaflet-control-layers-base, .leaflet-control-layers-overlays {
+            padding: 6px 10px;
+            font-size: 14px;
+        }
+        .leaflet-control-layers-base label, .leaflet-control-layers-overlays label {
+            padding-top: 3px;
+        }
+    </style>
+<link type="text/css" rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- Service Classification Legend (Bottom Right) -->
+    <div id="legend" class="legend-control">
+        <h4>Service Classification Legend</h4>
+        <div class="legend-section marker-legend">
+            <div><span style="background-color: #28a745;"></span>High Level (Max Stability)</div>
+            <div><span style="background-color: #007bff;"></span>Central Level (High Stability)</div>
+            <div><span style="background-color: #fd7e14;"></span>Growth Level (Medium Stability)</div>
+            <div><span style="background-color: #dc3545;"></span>Basic Level (Low Stability)</div>
+            <div><span style="background-color: #6c757d;"></span>Unclassified</div>
+        </div>
+        <hr class="my-2">
+        <!-- Priority Zones -->
+        <h4>Geographic Action Priority</h4>
+        <div class="legend-section zone-legend">
+            <div><span style="background-color: #990000;"></span>NO NETWORK (Cistern Supply)</div>
+            <div><span style="background-color: #6f42c1;"></span>CRITICAL (Max Density/Old Network)</div>
+            <div><span style="background-color: #17a2b8;"></span>VERY HIGH (High Density/Urgent Improvement)</div>
+            <div><span style="background-color: #ffc107;"></span>HIGH/MEDIUM (Growth/Expansion)</div>
+        </div>
+         <hr class="my-2">
+        <!-- Springs (Water Sources) -->
+        <h4>Alternative Water Sources</h4>
+        <div class="legend-section zone-legend">
+            <div><span class="spring-legend-icon"></span>Spring (Water Source)</div>
+        </div>
+    </div>
+    
+    <!-- Drinking Water Quality Standards Legend (Bottom Left) -->
+    <div id="quality-standards" class="quality-control">
+        <h4>Drinking Water Standards (Peruvian MCLs)</h4>
+        <div class="quality-item">
+            <strong>pH</strong>
+            <span>6.5 - 8.5</span>
+        </div>
+        <div class="quality-item">
+            <strong>Total Dissolved Solids (TDS)</strong>
+            <span>Max. 1000 mg/L</span>
+        </div>
+        <div class="quality-item">
+            <strong>Electrical Conductivity</strong>
+            <span>Max. 2000 µS/cm</span>
+        </div>
+        <div class="quality-item critical">
+            <strong>Thermotolerant Coliforms</strong>
+            <span>0 MPN/100 mL</span>
+        </div>
+    </div>
+
+
+    <script>
+        // Water Quality Data by District (Estimated and Real)
+        const waterQualityData = { "Arequipa (Cercado)": { ph: 7.4, tds: 380, conductivity: 760, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Alto Selva Alegre": { ph: 7.3, tds: 400, conductivity: 800, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Cayma": { ph: 7.5, tds: 360, conductivity: 720, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Cerro Colorado": { ph: 7.2, tds: 420, conductivity: 840, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Characato": { ph: 7.3, tds: 410, conductivity: 820, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Chiguata": { ph: 7.1, tds: 450, conductivity: 900, coliforms_val: 24, coliforms_txt: ">23 MPN/100mL", type: "Real", obs: "Real Data (Coliforms >23 MPN/100mL). Does not comply with D.S. 031-2010-SA." }, "Jacobo Hunter": { ph: 7.0, tds: 550, conductivity: 1100, coliforms_val: 7938, coliforms_txt: "7,938 UFC/100ml", type: "Cruda", obs: "WARNING! Coliform data from raw water, NOT potable." }, "José Luis Bustamante y Rivero": { ph: 7.6, tds: 350, conductivity: 700, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "La Joya": { ph: 7.8, tds: 600, conductivity: 1200, coliforms_val: 2, coliforms_txt: "Exceeds MCL", type: "Real", obs: "Historical Real Data (Exceeds MCL). Current status unknown." }, "Mariano Melgar": { ph: 7.2, tds: 430, conductivity: 860, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Miraflores": { ph: 7.3, tds: 390, conductivity: 780, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Mollebaya": { ph: 7.5, tds: 370, conductivity: 740, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Paucarpata": { ph: 7.1, tds: 480, conductivity: 960, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Quequeña": { ph: 7.4, tds: 340, conductivity: 680, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Sabandía": { ph: 7.7, tds: 320, conductivity: 640, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Sachaca": { ph: 7.6, tds: 330, conductivity: 660, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Socabaya": { ph: 7.0, tds: 550, conductivity: 1100, coliforms_val: 7938, coliforms_txt: "7,938 UFC/100ml", type: "Cruda", obs: "WARNING! Coliform data from raw water, NOT potable." }, "Tiabaya": { ph: 7.5, tds: 310, conductivity: 620, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Uchumayo": { ph: 7.2, tds: 440, conductivity: 880, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Yanahuara": { ph: 7.8, tds: 300, conductivity: 600, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." }, "Yura": { ph: 7.9, tds: 500, conductivity: 1000, coliforms_val: 1, coliforms_txt: "Potential risk", type: "Estimated", obs: "Observation: Estimation. Potential risk due to lack of public data." } };
+        
+        // Service Stability Classification
+        const districtClassification = { 
+            "Cayma": { class: "High Level", stability: "MAXIMUM (Low Risk)", compliance: "Modern networks ensure 0 Coliforms, pH in range (6.5−8.5), and continuity." }, 
+            "Yanahuara": { class: "High Level", stability: "MAXIMUM (Low Risk)", compliance: "Modern networks ensure 0 Coliforms, pH in range (6.5−8.5), and continuity." }, 
+            "Arequipa (Cercado)": { class: "Central Level", stability: "HIGH (Controlled Risk)", compliance: "Areas with high monitoring and proximity to treatment plants. The challenge is traffic management and the age of some pipelines." }, 
+            "José Luis Bustamante y Rivero": { class: "Central Level", stability: "HIGH (Controlled Risk)", compliance: "Areas with high monitoring and proximity to treatment plants. The challenge is traffic management and the age of some pipelines." }, 
+            "Cerro Colorado": { class: "Growth Level", stability: "MEDIUM (Variable Risk)", compliance: "Rapid expansion can generate variability in pressure or ppm/μS/cm levels depending on the supply area." }, 
+            "Jacobo Hunter": { class: "Growth Level", stability: "MEDIUM (Variable Risk)", compliance: "Rapid expansion can generate variability in pressure or ppm/μS/cm levels depending on the supply area." }, 
+            "Paucarpata": { class: "Growth Level", stability: "MEDIUM (Variable Risk)", compliance: "Rapid expansion can generate variability in pressure or ppm/μS/cm levels depending on the supply area." }, 
+            "Alto Selva Alegre": { class: "Basic Level", stability: "LOW (High Risk)", compliance: "Higher incidence of service interruptions. The risk of Coliform contamination increases when the network is drained and refilled." }, 
+            "Yura": { class: "Basic Level", stability: "LOW (High Risk)", compliance: "Higher incidence of service interruptions. The risk of Coliform contamination increases when the network is drained and refilled." } 
+        };
+        
+        // Central Coordinates for Markers
+        const districtCoordinates = { "Arequipa (Cercado)": [-16.3988, -71.5369], "Alto Selva Alegre": [-16.3825, -71.5175], "Cayma": [-16.3789, -71.5542], "Cerro Colorado": [-16.3653, -71.5806], "Characato": [-16.4678, -71.4914], "Chiguata": [-16.4011, -71.3783], "Jacobo Hunter": [-16.4328, -71.5486], "José Luis Bustamante y Rivero": [-16.4253, -71.5325], "La Joya": [-16.6333, -71.8500], "Mariano Melgar": [-16.4111, -71.5069], "Miraflores": [-16.3928, -71.5208], "Mollebaya": [-16.4917, -71.4500], "Paucarpata": [-16.4214, -71.4972], "Quequeña": [-16.5167, -71.4667], "Sabandía": [-16.4528, -71.5056], "Sachaca": [-16.4250, -71.5694], "Socabaya": [-16.4611, -71.5361], "Tiabaya": [-16.4489, -71.5931], "Uchumayo": [-16.4500, -71.6500], "Yanahuara": [-16.3900, -71.5475], "Yura": [-16.2522, -71.6783] };
+        
+        // Geospatial Analysis Zones (Polygons)
+        const analysisZonesData = {
+            // Expansion Zones
+            "expansion_norte": { coords: [[-16.331, -71.625], [-16.365, -71.595], [-16.352, -71.551], [-16.307, -71.572], [-16.305, -71.612]], color: "#ffc107", title: "Priority Expansion (North)", importance_level: "HIGH", description: "Medium/low density areas with rapid growth (Cerro Colorado, Yura). Priority is focused on extending the main network and pumping capacity." },
+            "expansion_sur": { coords: [[-16.471, -71.559], [-16.498, -71.542], [-16.508, -71.511], [-16.474, -71.499], [-16.461, -71.528]], color: "#ffc107", title: "Priority Expansion (South)", importance_level: "HIGH", description: "Growth zones in Socabaya, Hunter, and Characato (Medium Density). Requires extending the primary network to guarantee service to new populations." },
+            "expansion_oeste": { coords: [[-16.417, -71.636], [-16.445, -71.654], [-16.468, -71.621], [-16.437, -71.599]], color: "#ffc107", title: "Priority Expansion (West)", importance_level: "MEDIUM", description: "Industrial and residential corridor towards Uchumayo and Tiabaya (Medium-Low Density). The investment is strategic for economic and population development." },
+            "expansion_sureste": { coords: [[-16.437, -71.492], [-16.463, -71.497], [-16.472, -71.467], [-16.440, -71.470]], color: "#ffc107", title: "Priority Expansion (Southeast)", importance_level: "MEDIUM", description: "Developments in Paucarpata and Sabandía (Medium-High Density). Need to expand the network and improve pressure in the periphery." },
+            "expansion_altiplano": { coords: [[-16.35, -71.44], [-16.42, -71.39], [-16.46, -71.41], [-16.41, -71.47]], color: "#ffc107", title: "Long-Term Expansion (Eastern Altiplano)", importance_level: "LOW", description: "Focus on rural and low-density areas (Chiguata). Long-term priority, focused on decentralized solutions (small systems)." },
+            "expansion_lejano_suroeste": { coords: [[-16.60, -71.70], [-16.65, -71.85], [-16.70, -71.75], [-16.65, -71.65]], color: "#ffc107", title: "Long-Term Expansion (Southwest Corridor)", importance_level: "LOW", description: "Long-term projection for distant, very low-density districts (La Joya, Vítor). Requires large adduction projects." },
+            // Urgent Improvement Zones
+            "mejora_este": { coords: [[-16.393, -71.520], [-16.416, -71.512], [-16.425, -71.492], [-16.398, -71.495], [-16.381, -71.513]], color: "#17a2b8", title: "Urgent Network Improvement (East)", importance_level: "VERY HIGH", description: "HIGH DENSITY sectors (Alto Selva Alegre, M. Melgar). Obsolete networks need to be modernized to reduce losses and ensure service continuity." },
+            "mejora_central_critica": { coords: [[-16.394, -71.545], [-16.406, -71.549], [-16.428, -71.530], [-16.411, -71.519], [-16.395, -71.528]], color: "#6f42c1", title: "CRITICAL Improvement (Historic Center)", importance_level: "CRITICAL", description: "The heart of Arequipa (Cercado) with MAXIMUM DENSITY. It has the oldest infrastructure. Renovation is vital and complex, with a high risk of breakage." },
+            // Cistern Supply Zones
+            "cisternas_norte": { coords: [[-16.320, -71.600], [-16.340, -71.620], [-16.350, -71.590], [-16.330, -71.570]], color: "#990000", title: "Cistern Supply (North)", importance_level: "MAXIMUM NEED", description: "High-altitude zones and new urban developments (Cerro Colorado, Yura). They do not have a piping network. Supply is 100% by cistern trucks." },
+            "cisternas_este": { coords: [[-16.360, -71.500], [-16.380, -71.510], [-16.390, -71.490], [-16.370, -71.480]], color: "#990000", title: "Cistern Supply (East)", importance_level: "MAXIMUM NEED", description: "Human settlements on the eastern slopes (Alto Selva Alegre, Miraflores). Requires pumping projects and storage tanks for the network." }
+        };
+
+        // Alternative Water Sources (Springs)
+        const springLocations = {
+            "Yumina Spring": {
+                coords: [-16.446, -71.512], // Near Sabandía
+                description: "Sweet water spring with good measurements for human consumption. Most people in these areas frequently use these springs for their daily use.",
+                iconContent: "💧"
+            },
+            "Characato Spring": {
+                coords: [-16.480, -71.498], // Near Characato
+                description: "Sweet water spring with good measurements for human consumption. Most people in these areas frequently use these springs for their daily use.",
+                iconContent: "💧"
+            }
+        };
+        
+        const coliformesColorMapping = { "Real": "#d00000", "Cruda": "#582f0e", "Estimado": "#4b5563" };
+        const classificationColorMapping = { "High Level": "#28a745", "Central Level": "#007bff", "Growth Level": "#fd7e14", "Basic Level": "#dc3545", "default": "#6c757d" };
+
+        // Map Initialization
+        const southWest = L.latLng(-16.7, -71.9);
+        const northEast = L.latLng(-16.15, -71.3);
+        const bounds = L.latLngBounds(southWest, northEast);
+        
+        const map = L.map('map', { 
+            center: [-16.40, -71.55],
+            zoom: 12, 
+            maxBounds: bounds,
+            minZoom: 11
+        });
+        
+        // Base Layer (Light)
+        const baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' }).addTo(map);
+
+        // NEW Base Layer (Dark Mode)
+        const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>' });
+
+
+        // Group for Priority Analysis Polygons (for layer control)
+        const analysisZonesLayer = L.layerGroup();
+        
+        // Add Analysis Zones (Polygons) to the layer group
+        for (const zoneKey in analysisZonesData) {
+            const zone = analysisZonesData[zoneKey];
+            const popupContent = `<h4>${zone.title}</h4><p><strong>Importance (Density):</strong> <span style="font-weight: bold; color: ${zone.color};">${zone.importance_level}</span></p><p>${zone.description}</p>`;
+            const borderColor = zone.color === "#990000" ? "#ff4d4d" : zone.color;
+            
+            L.polygon(zone.coords, { color: borderColor, fillColor: zone.color, fillOpacity: 0.35, weight: 2.5 })
+                .bindPopup(popupContent)
+                .addTo(analysisZonesLayer); // Add to the group
+        }
+        
+        // Add the analysis group to the map initially
+        analysisZonesLayer.addTo(map);
+
+
+        // Group for District Markers and Springs
+        const markersLayer = L.layerGroup().addTo(map);
+
+        // Add Markers (L.circleMarker) and Labels (L.divIcon) for Districts
+        for (const district in waterQualityData) {
+            if (districtCoordinates[district]) {
+                const data = waterQualityData[district]; 
+                const classification = districtClassification[district]; 
+                const coords = districtCoordinates[district];
+                
+                // Marker color based on classification
+                let markerColor = classification ? classificationColorMapping[classification.class] : classificationColorMapping.default;
+
+                // Popup Content
+                let popupContent = `
+                    <h3>${district}</h3>
+                    <p><strong>pH (Est.):</strong> ${data.ph}</p>
+                    <p><strong>TDS (mg/L) (Est.):</strong> ${data.tds}</p>
+                    <p><strong>Conductivity (µS/cm) (Est.):</strong> ${data.conductivity}</p>
+                    <p><strong>Coliforms:</strong> <span style="color: ${coliformesColorMapping[data.type]}; font-weight: bold;">${data.coliforms_txt}</span></p>
+                    <p><small><strong>Observation:</strong> ${data.obs}</small></p>
+                `;
+                
+                if(classification){ 
+                    popupContent += `<hr style="margin: 10px 0;"><h4>Service Analysis</h4><p><strong>Classification:</strong> <span style="color: ${markerColor}; font-weight: bold;">${classification.class}</span></p><p><strong>Network Stability:</strong> ${classification.stability}</p><p><small><strong>Sanitary Analysis:</strong> ${classification.compliance}</small></p>`; 
+                }
+                
+                // 1. Add the L.circleMarker (Colored Dot) - Links the popup
+                L.circleMarker(coords, {
+                    radius: 7, 
+                    fillColor: markerColor,
+                    color: "#333", 
+                    weight: 1.5,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(markersLayer).bindPopup(popupContent);
+
+                // 2. Create and add the L.marker with the Custom Icon (Large Label)
+                const customIcon = L.divIcon({
+                    className: 'district-label',
+                    html: `<div>${district}</div>`,
+                    iconAnchor: [-5, 5] 
+                });
+
+                L.marker(coords, { icon: customIcon }).addTo(markersLayer);
+            }
+        }
+
+        // Add Springs (Water Sources)
+        for (const spring in springLocations) {
+            const data = springLocations[spring];
+            const coords = data.coords;
+
+            // Popup Content for Springs
+            const springPopupContent = `
+                <h3>Spring: ${spring}</h3>
+                <h4>Sweet Water Sources</h4>
+                <p><strong>Description:</strong> ${data.description}</p>
+                <p style="font-size: 11px; color: #555;">Most people in these areas frequently use these springs for their daily use.</p>
+            `;
+
+            // Custom icon for Springs (using a divIcon with a droplet/diamond style)
+            const springIcon = L.divIcon({
+                className: 'spring-icon',
+                html: '💧', // Water droplet icon
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+
+            L.marker(coords, { icon: springIcon }).addTo(markersLayer).bindPopup(springPopupContent);
+        }
+        
+        // 1. Define base layers (including Dark Mode)
+        const baseMaps = {
+            "Base Map (Light)": baseLayer,
+            "Base Map (Dark)": darkLayer 
+        };
+
+        // 2. Define toggleable layers (Overlays)
+        const overlayMaps = {
+            "Priority Zones (Analysis)": analysisZonesLayer,
+            "Points of Interest (Districts/Springs)": markersLayer
+        };
+
+        // 3. Add the layer control to the map
+        L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+    </script>
+<script type="text/javascript" src="js/script.js"></script>
+</body>
+</html>
